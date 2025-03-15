@@ -1,10 +1,14 @@
 const express = require("express")
 const { connectToMongoDb } = require("./connect")
-const urlRoute = require("./routes/url");
-const app = express();
 const path = require("path");
+const cookieParser = require("cookie-parser");
+const app = express();
+
+const {restrictToLoggedInUserOnly, checkAuth} = require("./middlewares/auth");
 const Url = require("./models/url");
+const urlRoute = require("./routes/url");
 const staticRoute = require("./routes/staticRouter");
+const userRoute = require("./routes/user");
 
 const PORT = 8001;
 
@@ -17,6 +21,7 @@ app.set("views", path.resolve("./views"))
 
 app.use(express.json());
 app.use(express.urlencoded({extended:false}))
+app.use(cookieParser());
 
 app.get("/test", async (req,res) => {
     const allUrls = await Url.find({});
@@ -24,9 +29,9 @@ app.get("/test", async (req,res) => {
         {urls: allUrls}
     );
 });
-app.use("/url", urlRoute);
-
-app.use("/", staticRoute);
+app.use("/url", restrictToLoggedInUserOnly, urlRoute);
+app.use("/user", userRoute);
+app.use("/", checkAuth, staticRoute);
 app.get("/url/:shortId", urlRoute);
 app.get("/analytics/:shortId", urlRoute);
 app.listen(PORT, () => console.log(`Server started at port: ${PORT}`))
